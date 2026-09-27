@@ -40,6 +40,7 @@ const YT_ = (() => {
     arms: /\barms?\b|upper body|shoulder|bicep|tricep|\bback\b|chest/,
     legs: /\blegs?\b|booty|glute|thigh|lower body|\bbutt\b|squat/,
     abs: /\babs?\b|\bcore\b|oblique|six[\s-]?pack/,
+    fullbody: /full[\s-]?body|total[\s-]?body|whole[\s-]?body/,
   };
   function guessCats(title, parts) {
     const t = (title || '').toLowerCase();

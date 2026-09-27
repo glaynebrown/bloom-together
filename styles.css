@@ -537,6 +537,9 @@ body.big.idle { cursor: none; }
 .part-list li { display: flex; align-items: center; gap: 4px; }
 .part-list input { margin: 0; min-height: 38px; padding: 6px 10px; flex: 1; }
 .part-list .small { min-width: 26px; text-align: right; margin-right: 4px; }
+.worth, .worth-slot { width: 36px; height: 30px; flex: none; }
+.worth { border: 1px dashed var(--line); border-radius: 9px; background: transparent; color: var(--muted); font-weight: 700; font-size: .8rem; cursor: pointer; }
+.worth.on { background: var(--accent-soft); border: 1px solid transparent; color: var(--ink); }
 .history .label { margin-top: 16px; }
 .card-toggle { display: flex; align-items: baseline; gap: 8px; width: 100%; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; }
 .card-toggle h2 { margin: 0; }

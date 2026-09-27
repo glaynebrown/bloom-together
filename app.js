@@ -2,12 +2,14 @@
    sample mode); keeping the two players in step is sync.js. */
 
 // Workout parts. The list is shared and editable in Settings (room.cats);
-// these are the starting four. The first part is the warm-up.
+// these are the starting ones. The first part is the warm-up. A part with
+// worth: 2 (Full body) stands in for two parts when Surprise us picks.
 const DEFAULT_CATS = [
   { key: 'stretch', label: 'Warm-up & stretch', short: 'Stretch' },
   { key: 'arms', label: 'Arms', short: 'Arms' },
   { key: 'legs', label: 'Legs', short: 'Legs' },
   { key: 'abs', label: 'Abs', short: 'Abs' },
+  { key: 'fullbody', label: 'Full body', short: 'Full body', worth: 2 },
 ];
 const LOOKS = [
   { key: 'nook', name: 'Reading Nook', swatch: ['#F7E9D9', '#6F7862', '#A37C76'] },
@@ -291,11 +293,17 @@ function editQueue(fn) {
   }).catch(e => { console.error(e); toast('Couldn’t update the workout'); });
 }
 
-// The first part (the warm-up) plus two random other parts.
+// The first part (the warm-up), then two parts' worth: either two random
+// parts, or one "counts as 2" part like Full body. Every option is equally likely.
 function surprise() {
-  const [warm, ...rest] = allCats().map(c => c.key);
-  const others = shuffle(rest).filter(c => pick(c));
-  const slots = [...(warm && pick(warm) ? [warm] : []), ...others.slice(0, 2)];
+  const [warm, ...rest] = allCats();
+  const avail = rest.filter(c => pick(c.key));
+  const singles = avail.filter(c => (c.worth || 1) < 2);
+  const options = avail.filter(c => (c.worth || 1) >= 2).map(c => [c.key]);
+  for (let i = 0; i < singles.length; i++) for (let j = i + 1; j < singles.length; j++) options.push(shuffle([singles[i].key, singles[j].key]));
+  if (!options.length && singles.length) options.push([singles[0].key]);
+  const main = options.length ? options[Math.floor(Math.random() * options.length)] : [];
+  const slots = [...(warm && pick(warm.key) ? [warm.key] : []), ...main];
   const used = new Set();
   const q = slots.map(s => { const v = pick(s, 0, 0, used); used.add(v.id); return toItem(v, s); });
   if (!q.length) return toast('Add some videos to the library first');
@@ -376,14 +384,38 @@ function openRoom() {
       return;
     }
     A.room = r;
-    if (first) { first = false; startRoom(); }
+    if (first) { first = false; addNewDefaults(r); startRoom(); }
     render();
+  });
+}
+
+// Parts added to the app after your code was created (like Full body) are
+// offered once: added to your list, and matching videos tagged from their
+// titles. If you remove one later it stays removed.
+function addNewDefaults(r) {
+  if (!r.cats) return; // still on the built-in list, which already has everything
+  const offered = new Set(r.defaultsOffered || r.cats.map(c => c.key));
+  const fresh = DEFAULT_CATS.filter(d => !offered.has(d.key) && !r.cats.some(c => c.key === d.key));
+  if (!fresh.length && r.defaultsOffered) return;
+  A.store.updateRoom({
+    cats: [...r.cats, ...fresh],
+    defaultsOffered: [...new Set([...offered, ...DEFAULT_CATS.map(d => d.key)])],
+  });
+  if (fresh.length) A.pendingTag = fresh; // tagged once the library loads (startRoom)
+}
+function tagPending(videos) {
+  if (!A.pendingTag || !videos.length) return;
+  const fresh = A.pendingTag;
+  A.pendingTag = null;
+  videos.forEach(v => {
+    const add = YT_.guessCats(v.title, fresh).filter(k => !(v.cats || []).includes(k));
+    if (add.length) A.store.updateVideo(v.id, { cats: [...(v.cats || []), ...add] });
   });
 }
 
 function startRoom() {
   if (!A.me) return renderWho();
-  A.store.watchVideos(v => { A.videos = v; render(); });
+  A.store.watchVideos(v => { A.videos = v; tagPending(v); render(); });
   A.store.watchWorkouts(w => { A.workouts = w; render(); });
   A.store.watchPresence(p => { A.presence = p; renderTop(); });
   A.store.watchLive(onLive);
@@ -851,7 +883,7 @@ function renderPlan() {
   const warm = allCats()[0];
   const panels = {
     surprise: `<div class="surprise">
-        <p class="muted">${esc(warm ? warm.label : 'A warm-up')} plus 2 random parts, one video each, favoring ones you haven’t done lately.</p>
+        <p class="muted">${esc(warm ? warm.label : 'A warm-up')} plus 2 random parts${allCats().some(c => (c.worth || 1) >= 2) ? ` (or one ${esc(allCats().filter(c => (c.worth || 1) >= 2).map(c => c.short.toLowerCase()).join(' or '))} video in place of both)` : ''}, favoring videos you haven’t done lately.</p>
         <button class="btn primary big-btn" data-act="surprise">${icon('dice')} ${queue().length ? 'Surprise us again' : 'Surprise us'}</button>
       </div>`,
     mix: `<p class="muted small">Pick the parts and how long each can be. One random video per part, in this order.</p>
@@ -1181,6 +1213,7 @@ function renderSettings() {
         <ul class="part-list">${allCats().map((c, i, list) => `<li>
           <input value="${esc(c.short)}" data-part="${c.key}" maxlength="24" aria-label="Part name">
           <span class="muted small">${A.videos.filter(v => (v.cats || []).includes(c.key)).length}</span>
+          ${i === 0 ? '<span class="worth-slot"></span>' : `<button class="worth ${(c.worth || 1) >= 2 ? 'on' : ''}" data-act="part-worth" data-k="${c.key}" title="Counts as 2 parts in Surprise us" aria-pressed="${(c.worth || 1) >= 2}">×2</button>`}
           <button class="icon-btn" data-act="part-move" data-k="${c.key}" data-d="-1" ${i === 0 ? 'disabled' : ''} title="Move up">${icon('up')}</button>
           <button class="icon-btn" data-act="part-move" data-k="${c.key}" data-d="1" ${i === list.length - 1 ? 'disabled' : ''} title="Move down">${icon('down')}</button>
           <button class="icon-btn" data-act="part-remove" data-k="${c.key}" ${list.length <= 1 ? 'disabled' : ''} title="Remove">${icon('x')}</button>
@@ -1189,7 +1222,7 @@ function renderSettings() {
           <label>Add a part<input name="name" placeholder="Glutes, Shoulders, Cardio…" maxlength="24" required></label>
           <button class="btn small">Add</button>
         </form>
-        <p class="muted small">New parts tag matching videos automatically from their titles. The number is how many videos have each part.</p>
+        <p class="muted small">New parts tag matching videos automatically from their titles. The number is how many videos have each part. <b>×2</b> means one of those videos counts as two parts, so Surprise us picks it instead of two separate parts (like Full body).</p>
       </section>
       <section class="card history">
         <button type="button" class="card-toggle" data-act="toggle-history" aria-expanded="${!historyFolded()}">
@@ -1409,6 +1442,9 @@ async function onClick(e) {
       saveCats(list);
       break;
     }
+    case 'part-worth':
+      saveCats(allCats().map(c => (c.key === el.dataset.k ? { ...c, worth: (c.worth || 1) >= 2 ? 1 : 2 } : c)));
+      break;
     case 'part-remove': {
       const c = catOf(el.dataset.k);
       if (!c || !await ask(`Remove ${c.short}? Videos keep their other parts; past workouts are unchanged.`, 'Remove', true)) return;
