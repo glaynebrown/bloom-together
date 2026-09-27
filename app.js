@@ -58,6 +58,11 @@ const queue = () => (A.live && A.live.queue) || [];
 const isRunning = (s = A.live) => !!s && ['ready', 'playing', 'paused'].includes(s.mode);
 const allCats = () => (A.room && A.room.cats && A.room.cats.length ? A.room.cats : DEFAULT_CATS);
 const catOf = key => allCats().find(c => c.key === key);
+// Parts used when building workouts. A part with use: false (like Cardio,
+// for now) is just a label in the Library: Surprise, Mix and Pick skip it.
+const buildCats = () => allCats().filter(c => c.use !== false);
+// A video is only for building if at least one of its parts is (untagged videos count).
+const buildable = v => !videoCats(v).length || videoCats(v).some(k => catOf(k).use !== false);
 const partName = key => (catOf(key) || {}).short || '';
 const videoCats = v => (v.cats || []).filter(k => catOf(k)); // ignores removed parts
 // The Work Out tab shows the player while a workout is going (and until it's
@@ -270,6 +275,7 @@ function recentVids() {
 // A random video for a slot, preferring ones you haven't done lately.
 function pick(slot, min, max, exclude = new Set()) {
   const pool = A.videos.filter(v => !v.noEmbed && (v.cats || []).includes(slot) && fits(v, min, max) && !exclude.has(v.id));
+  // (slot is always a workout part here, so library-only parts never get picked)
   const recent = recentVids();
   const fresh = pool.filter(v => !recent.has(v.id));
   const from = fresh.length ? fresh : pool;
@@ -296,7 +302,7 @@ function editQueue(fn) {
 // The first part (the warm-up), then two parts' worth: either two random
 // parts, or one "counts as 2" part like Full body. Every option is equally likely.
 function surprise() {
-  const [warm, ...rest] = allCats();
+  const [warm, ...rest] = buildCats();
   const avail = rest.filter(c => pick(c.key));
   const singles = avail.filter(c => (c.worth || 1) < 2);
   const options = avail.filter(c => (c.worth || 1) >= 2).map(c => [c.key]);
@@ -313,7 +319,7 @@ function surprise() {
 function buildMix(mix) {
   const used = new Set();
   const q = [], missing = [];
-  allCats().forEach(c => {
+  buildCats().forEach(c => {
     const m = mix[c.key];
     if (!m || !m.on) return;
     const v = pick(c.key, m.min, m.max, used);
@@ -779,7 +785,7 @@ function renderLibrary() {
         ${u.importMsg ? `<p class="import-msg">${esc(u.importMsg)}</p>` : ''}
       </form>` : ''}
     <div class="filters">
-      <div class="chips">${chip('all', 'All', A.videos.length)}${allCats().map(c => chip(c.key, c.short, count(c.key))).join('')}${untagged ? chip('none', 'Needs a category', untagged) : ''}</div>
+      <div class="chips">${chip('all', 'All', A.videos.length)}${allCats().map(c => chip(c.key, c.use === false ? `${esc(c.short)} <em>library</em>` : esc(c.short), count(c.key))).join('')}${untagged ? chip('none', 'Needs a category', untagged) : ''}</div>
       <div class="filter-row">
         <input type="search" data-bind="q" value="${esc(u.q)}" placeholder="Search titles">
         <select data-bind="len" aria-label="Length">
@@ -865,7 +871,7 @@ function renderPlan() {
   const mix = A.ui.mix;
   allCats().forEach(c => { if (!mix[c.key]) mix[c.key] = { on: false, min: 0, max: 0 }; }); // parts added later
   const opt = (v, sel, anyLabel) => MINUTES.map(m => `<option value="${m}" ${m === Number(sel) ? 'selected' : ''}>${m ? `${m} min` : anyLabel}</option>`).join('');
-  const rows = allCats().map(c => {
+  const rows = buildCats().map(c => {
     const m = mix[c.key];
     const n = A.videos.filter(v => !v.noEmbed && (v.cats || []).includes(c.key) && fits(v, m.min, m.max)).length;
     return `<div class="mix-row ${m.on ? 'on' : ''}">
@@ -880,10 +886,10 @@ function renderPlan() {
   }).join('');
   const tab = A.ui.buildTab || lsGet('bt-build-tab') || 'mix';
   const tabs = [['surprise', 'Surprise'], ['mix', 'Mix'], ['pick', 'Pick'], ['favs', 'Favorites']];
-  const warm = allCats()[0];
+  const warm = buildCats()[0];
   const panels = {
     surprise: `<div class="surprise">
-        <p class="muted">${esc(warm ? warm.label : 'A warm-up')} plus 2 random parts${allCats().some(c => (c.worth || 1) >= 2) ? ` (or one ${esc(allCats().filter(c => (c.worth || 1) >= 2).map(c => c.short.toLowerCase()).join(' or '))} video in place of both)` : ''}, favoring videos you haven’t done lately.</p>
+        <p class="muted">${esc(warm ? warm.label : 'A warm-up')} plus 2 random parts${buildCats().some(c => (c.worth || 1) >= 2) ? ` (or one ${esc(buildCats().filter(c => (c.worth || 1) >= 2).map(c => c.short.toLowerCase()).join(' or '))} video in place of both)` : ''}, favoring videos you haven’t done lately.</p>
         <button class="btn primary big-btn" data-act="surprise">${icon('dice')} ${queue().length ? 'Surprise us again' : 'Surprise us'}</button>
       </div>`,
     mix: `<p class="muted small">Pick the parts and how long each can be. One random video per part, in this order.</p>
@@ -910,11 +916,11 @@ function pickPanel() {
   const q = (A.ui.pickQ || '').toLowerCase();
   const inQueue = new Set(queue().map(x => x.vid));
   const list = A.videos
-    .filter(v => !v.noEmbed && (cat === 'all' || (v.cats || []).includes(cat)) && (!q || (v.title || '').toLowerCase().includes(q)))
+    .filter(v => !v.noEmbed && buildable(v) && (cat === 'all' || (v.cats || []).includes(cat)) && (!q || (v.title || '').toLowerCase().includes(q)))
     .sort((a, b) => (a.title || '').localeCompare(b.title || ''));
   if (!A.videos.length) return '<p class="muted">No videos yet. Add your playlist on the <a href="#/library">Library</a> tab.</p>';
   return `
-    <div class="chips pick-chips">${[['all', 'All'], ...allCats().map(c => [c.key, c.short])].map(([k, l]) => `<button class="chip ${cat === k ? 'on' : ''}" data-act="pick-cat" data-c="${k}">${esc(l)}</button>`).join('')}</div>
+    <div class="chips pick-chips">${[['all', 'All'], ...buildCats().map(c => [c.key, c.short])].map(([k, l]) => `<button class="chip ${cat === k ? 'on' : ''}" data-act="pick-cat" data-c="${k}">${esc(l)}</button>`).join('')}</div>
     <input type="search" data-bind="pq" value="${esc(A.ui.pickQ || '')}" placeholder="Search titles" class="pick-search">
     <ul class="pick-list">${list.map(v => `<li>
       <img src="${YT_.thumb(v.yt)}" alt="" loading="lazy">
@@ -1209,10 +1215,11 @@ function renderSettings() {
       </section>
       <section class="card parts">
         <h2>Workout parts</h2>
-        <p class="muted small">The body parts you tag videos with and build mixes from. The first one is your warm-up: Surprise us always starts with it.</p>
+        <p class="muted small">The body parts you tag videos with and build mixes from. The first one used in workouts is your warm-up: Surprise us always starts with it.</p>
         <ul class="part-list">${allCats().map((c, i, list) => `<li>
           <input value="${esc(c.short)}" data-part="${c.key}" maxlength="24" aria-label="Part name">
-          <span class="muted small">${A.videos.filter(v => (v.cats || []).includes(c.key)).length}</span>
+          <span class="muted small">${(n => `${n} video${n === 1 ? '' : 's'}`)(A.videos.filter(v => (v.cats || []).includes(c.key)).length)}</span>
+          <button class="use ${c.use === false ? '' : 'on'}" data-act="part-use" data-k="${c.key}" title="${c.use === false ? 'Library only: not used in workouts' : 'Used in workouts'}" aria-pressed="${c.use !== false}">${c.use === false ? 'Library' : 'Workouts'}</button>
           ${i === 0 ? '<span class="worth-slot"></span>' : `<button class="worth ${(c.worth || 1) >= 2 ? 'on' : ''}" data-act="part-worth" data-k="${c.key}" title="Counts as 2 parts in Surprise us" aria-pressed="${(c.worth || 1) >= 2}">×2</button>`}
           <button class="icon-btn" data-act="part-move" data-k="${c.key}" data-d="-1" ${i === 0 ? 'disabled' : ''} title="Move up">${icon('up')}</button>
           <button class="icon-btn" data-act="part-move" data-k="${c.key}" data-d="1" ${i === list.length - 1 ? 'disabled' : ''} title="Move down">${icon('down')}</button>
@@ -1222,7 +1229,7 @@ function renderSettings() {
           <label>Add a part<input name="name" placeholder="Glutes, Shoulders, Cardio…" maxlength="24" required></label>
           <button class="btn small">Add</button>
         </form>
-        <p class="muted small">New parts tag matching videos automatically from their titles. The number is how many videos have each part. <b>×2</b> means one of those videos counts as two parts, so Surprise us picks it instead of two separate parts (like Full body).</p>
+        <p class="muted small">New parts tag matching videos automatically from their titles. <b>×2</b> means one of those videos counts as two parts, so Surprise us picks it instead of two separate parts (like Full body). Tap <b>Workouts</b> to switch a part to <b>Library</b>: its videos stay tagged and saved, but aren’t used to build workouts until you switch it back.</p>
       </section>
       <section class="card history">
         <button type="button" class="card-toggle" data-act="toggle-history" aria-expanded="${!historyFolded()}">
@@ -1440,6 +1447,12 @@ async function onClick(e) {
       if (i < 0 || j < 0 || j >= list.length) return;
       [list[i], list[j]] = [list[j], list[i]];
       saveCats(list);
+      break;
+    }
+    case 'part-use': {
+      const c = catOf(el.dataset.k);
+      saveCats(allCats().map(x => (x.key === el.dataset.k ? { ...x, use: x.use === false } : x)));
+      toast(c.use === false ? `${c.short} videos can be used in workouts` : `${c.short} is library only for now`);
       break;
     }
     case 'part-worth':

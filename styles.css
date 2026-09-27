@@ -536,8 +536,17 @@ body.big.idle { cursor: none; }
 .part-list { list-style: none; margin: 10px 0 14px; padding: 0; display: grid; gap: 6px; }
 .part-list li { display: flex; align-items: center; gap: 4px; }
 .part-list input { margin: 0; min-height: 38px; padding: 6px 10px; flex: 1; }
-.part-list .small { min-width: 26px; text-align: right; margin-right: 4px; }
+.part-list .small { min-width: 62px; text-align: right; margin-right: 4px; white-space: nowrap; }
 .worth, .worth-slot { width: 36px; height: 30px; flex: none; }
+.use { height: 30px; padding: 0 8px; flex: none; border-radius: 9px; border: 1px dashed var(--line); background: transparent; color: var(--muted); font-size: .78rem; font-weight: 700; cursor: pointer; min-width: 74px; }
+.use.on { background: var(--surface-2); border: 1px solid transparent; color: var(--ink); }
+.chip em { font-style: italic; font-weight: 400; opacity: .7; margin-left: 2px; }
+/* Narrow screens: the part's name gets its own line, buttons beneath. */
+@media (max-width: 480px) {
+  .part-list li { flex-wrap: wrap; row-gap: 4px; background: var(--bg); border-radius: 12px; padding: 6px; }
+  .part-list input { flex-basis: 100%; }
+  .part-list .small { margin-right: auto; text-align: left; padding-left: 6px; }
+}
 .worth { border: 1px dashed var(--line); border-radius: 9px; background: transparent; color: var(--muted); font-weight: 700; font-size: .8rem; cursor: pointer; }
 .worth.on { background: var(--accent-soft); border: 1px solid transparent; color: var(--ink); }
 .history .label { margin-top: 16px; }
