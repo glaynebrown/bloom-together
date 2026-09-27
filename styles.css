@@ -560,8 +560,10 @@ body.big.idle { cursor: none; }
 .use { height: 30px; padding: 0 8px; flex: none; border-radius: 9px; border: 1px dashed var(--line); background: transparent; color: var(--muted); font-size: .78rem; font-weight: 700; cursor: pointer; min-width: 74px; }
 .use.on { background: var(--surface-2); border: 1px solid transparent; color: var(--ink); }
 .chip em { font-style: italic; font-weight: 400; opacity: .7; margin-left: 2px; }
-/* Narrow screens: the part's name gets its own line, buttons beneath. */
-@media (max-width: 480px) {
+/* When the card is narrow (a phone, or the two-column desktop layout), the
+   part's name gets its own line with its buttons beneath. */
+.parts { container-type: inline-size; }
+@container (max-width: 560px) {
   .part-list li { flex-wrap: wrap; row-gap: 4px; background: var(--bg); border-radius: 12px; padding: 6px; }
   .part-list input { flex-basis: 100%; }
   .part-list .small { margin-right: auto; text-align: left; padding-left: 6px; }
@@ -569,6 +571,10 @@ body.big.idle { cursor: none; }
 .worth { border: 1px dashed var(--line); border-radius: 9px; background: transparent; color: var(--muted); font-weight: 700; font-size: .8rem; cursor: pointer; }
 .worth.on { background: var(--accent-soft); border: 1px solid transparent; color: var(--ink); }
 .history .label { margin-top: 16px; }
+.list-toggle { display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 16px; padding: 12px 2px; border: 0; border-top: 1px solid var(--line); background: none; cursor: pointer; font-weight: 700; font-size: .92rem; text-align: left; }
+.list-toggle span { font-weight: 400; }
+.list-toggle i { margin-left: auto; font-style: normal; color: var(--muted); }
+.list-toggle + .recent { margin-top: 0; }
 .card-toggle { display: flex; align-items: baseline; gap: 8px; width: 100%; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; }
 .card-toggle h2 { margin: 0; }
 .card-toggle i { margin-left: auto; font-style: normal; color: var(--muted); font-size: 1.1rem; }

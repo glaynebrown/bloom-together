@@ -1120,7 +1120,7 @@ async function logWorkout() {
 }
 
 /* ---------- settings ---------- */
-// "Recent workouts" always starts folded; open it for this visit with its arrow.
+// The list in "Recent workouts" always starts folded; open it with its arrow.
 const historyFolded = () => !A.ui.historyOpen;
 // The new code, in the app's own dialog. Resolves the code or null.
 function askCode() {
@@ -1217,10 +1217,8 @@ function renderSettings() {
         <p class="muted small">Using this device as <b>${esc(nameOf(A.me))}</b>. <button class="link" data-act="switch-me">Switch to ${esc(nameOf(other()))}</button></p>
       </section>
       <section class="card s-history history">
-        <button type="button" class="card-toggle" data-act="toggle-history" aria-expanded="${!historyFolded()}">
-          <h2>Recent workouts</h2><span class="muted small">last 2 weeks · ${A.workouts.filter(w => w.day >= Dates.addDays(Dates.today(), -13)).length}</span><i aria-hidden="true">${historyFolded() ? '▾' : '▴'}</i>
-        </button>
-        ${historyFolded() ? '' : `<form data-form="missed" class="missed">
+        <h2>Recent workouts</h2>
+        <form data-form="missed" class="missed">
           <input type="hidden" name="day" value="${A.ui.missedDay || Dates.today()}">
           <div class="field"><span class="field-label">Forgot to log one?</span>
             <button type="button" class="date-btn" data-act="cal-toggle" aria-expanded="${!!A.ui.calOpen}">${Dates.nice(A.ui.missedDay || Dates.today())}<span aria-hidden="true">▾</span></button>
@@ -1228,7 +1226,10 @@ function renderSettings() {
           <button class="btn small">Add it</button>
         </form>
         ${A.ui.calOpen ? calendar() : ''}
-        ${historyList(history)}`}
+        <button type="button" class="list-toggle" data-act="toggle-history" aria-expanded="${!historyFolded()}">
+          Last 2 weeks <span class="muted">${A.workouts.filter(w => w.day >= Dates.addDays(Dates.today(), -13)).length}</span><i aria-hidden="true">${historyFolded() ? '▾' : '▴'}</i>
+        </button>
+        ${historyFolded() ? '' : historyList(history)}
       </section>
       <section class="card s-account">
         <h2>Account</h2>
