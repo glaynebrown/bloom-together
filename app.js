@@ -314,6 +314,7 @@ function surprise() {
   const q = slots.map(s => { const v = pick(s, 0, 0, used); used.add(v.id); return toItem(v, s); });
   if (!q.length) return toast('Add some videos to the library first');
   editQueue(qq => { qq.splice(0, qq.length, ...q); });
+  A.ui.builderOpen = false;
   toast('🎲 Surprise workout ready');
 }
 function buildMix(mix) {
@@ -327,6 +328,7 @@ function buildMix(mix) {
   });
   if (!q.length) return toast('Nothing matches — try wider lengths');
   editQueue(qq => { qq.splice(0, qq.length, ...q); });
+  A.ui.builderOpen = false;
   toast(missing.length ? `No ${missing.join(' or ')} video fits those lengths` : 'Workout ready');
 }
 function reroll(i) {
@@ -485,9 +487,25 @@ function render(force) {
   const plotsScroll = oldPlots ? oldPlots.scrollLeft : null;
   $view.innerHTML = (screens[A.route] || renderHome)();
   centerGarden(plotsScroll);
+  fitHello();
   layoutStage();
   tick();
 }
+
+// Keep the greeting and date on one row: shorten the month ("Sept") if the
+// full name doesn't fit, and only if that still doesn't fit, shrink the text.
+function fitHello() {
+  const row = $view.querySelector('.hello');
+  if (!row) return;
+  const date = row.querySelector('.hello-date');
+  row.classList.remove('tight', 'tighter');
+  date.textContent = date.dataset.long;
+  const overflows = () => row.scrollWidth > row.clientWidth + 1;
+  if (overflows()) date.textContent = date.dataset.short;
+  if (overflows()) row.classList.add('tight');
+  if (overflows()) row.classList.add('tighter');
+}
+if (document.fonts) document.fonts.ready.then(() => fitHello());
 
 // On small screens the garden row scrolls: start with this week in the middle,
 // and keep wherever you scrolled it when the screen redraws.
@@ -518,7 +536,7 @@ function renderTop() {
   const nav = $top.querySelector('nav');
   if ($top.scrollWidth > $top.clientWidth + 1 || nav.scrollWidth > nav.clientWidth + 1) $top.classList.add('tight');
 }
-window.addEventListener('resize', () => renderTop());
+window.addEventListener('resize', () => { renderTop(); fitHello(); });
 
 function layoutStage() {
   const onWorkout = A.route === 'workout' && playerView();
@@ -625,7 +643,7 @@ function renderHome() {
   return `
     <section class="hello">
       <h1>${hello}, ${esc(me)}</h1>
-      <p class="hello-date">${Dates.niceLong(Dates.today())}</p>
+      <p class="hello-date" data-long="${esc(Dates.niceLong(Dates.today()))}" data-short="${esc(Dates.niceMid(Dates.today()))}">${Dates.niceLong(Dates.today())}</p>
     </section>
     ${liveBanner || todayStrip()}
     <div class="home-grid">
@@ -902,14 +920,18 @@ function renderPlan() {
     favs: favsPanel(),
   };
   return `
+    <div class="plan-page">
     <section class="page-head"><h1>Work Out</h1></section>
     <div class="plan-stack">
       ${queueCard()}
       <section class="card builder">
-        <h2>Build today’s workout</h2>
-        <div class="seg build-tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" aria-selected="${tab === k}" class="${tab === k ? 'on' : ''}" data-act="build-tab" data-k="${k}">${l}</button>`).join('')}</div>
-        ${panels[tab] || panels.mix}
+        <button type="button" class="card-toggle" data-act="build-toggle" aria-expanded="${builderOpen()}">
+          <h2>${queue().length ? 'Change today’s workout' : 'Build today’s workout'}</h2><i aria-hidden="true">${builderOpen() ? '▴' : '▾'}</i>
+        </button>
+        ${builderOpen() ? `<div class="seg build-tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" aria-selected="${tab === k}" class="${tab === k ? 'on' : ''}" data-act="build-tab" data-k="${k}">${l}</button>`).join('')}</div>
+        ${panels[tab] || panels.mix}` : ''}
       </section>
+    </div>
     </div>`;
 }
 
@@ -940,6 +962,10 @@ const favFilter = (on, act) => {
   const n = A.videos.filter(v => v.fav).length;
   return `<button class="fav-filter ${on ? 'on' : ''}" data-act="${act}" aria-pressed="${!!on}" title="${on ? 'Showing favorites (tap for all)' : 'Show only favorite videos'}">${icon(on ? 'heart' : 'heartOutline')}<span>${n}</span></button>`;
 };
+
+// The builder folds away once today's workout is lined up (tap its title to
+// open it again). While you're adding videos one at a time in Pick it stays open.
+const builderOpen = () => !queue().length || (A.live && A.live.mode === 'finished' && A.live.logged) || A.ui.builderOpen === true;
 
 /* ---------- favorite workouts (room.favorites) ---------- */
 const favorites = () => Object.entries((A.room && A.room.favorites) || {}).map(([id, f]) => ({ id, ...f })).sort((a, b) => (b.t || 0) - (a.t || 0));
@@ -1437,7 +1463,13 @@ async function onClick(e) {
       A.store.updateVideo(v.id, { cats: allCats().map(c => c.key).filter(k => cats.has(k)) });
       break;
     }
-    case 'add-q': { const v = A.videos.find(x => x.id === el.dataset.id); if (v) addToQueue(v); break; }
+    case 'add-q': {
+      const v = A.videos.find(x => x.id === el.dataset.id);
+      if (A.route === 'workout') A.ui.builderOpen = true; // keep Pick open while adding
+      if (v) addToQueue(v);
+      break;
+    }
+    case 'build-toggle': A.ui.builderOpen = !builderOpen(); render(true); break;
     case 'edit': A.ui.editing = el.dataset.id || null; render(true); break;
     case 'del-video':
       if (await ask('Delete this video from the library? (Past workouts keep their record.)', 'Delete', true)) { A.ui.editing = null; await A.store.deleteVideo(el.dataset.id); }
@@ -1515,6 +1547,7 @@ async function onClick(e) {
       const list = f.videos.filter(v => have.has(v.vid));
       if (!list.length) return toast('Those videos aren’t in the library anymore');
       await editQueue(q => { q.splice(0, q.length, ...list); });
+      A.ui.builderOpen = false;
       toast(list.length < f.videos.length ? `Loaded (${f.videos.length - list.length} video no longer in the library)` : `“${f.name}” is ready`);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       break;
