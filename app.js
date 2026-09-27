@@ -526,16 +526,22 @@ const onSyncChange = () => renderShield();
 const WORDS = ['peony', 'sage', 'rose', 'olive', 'fern', 'lilac', 'poppy', 'willow', 'dahlia', 'clover', 'iris', 'maple', 'tulip', 'hazel', 'juniper', 'marigold'];
 const suggestCode = () => `bloom-${shuffle(WORDS).slice(0, 2).join('-')}-${Math.floor(10 + Math.random() * 90)}`;
 
-function renderJoin(err = '') {
+// Signing in is what everyone does after day one, so it's the main thing here.
+// Starting a new code (a fresh, empty space) sits behind a small link.
+function renderJoin(err = '', creating = false) {
   $top.hidden = true;
-  $view.innerHTML = `
-    <section class="join">
-      ${flower(1, 110, 'Bloom Together', 1)}
-      <h1>Bloom Together</h1>
-      <p class="lede">Bella &amp; Izzy’s workouts, in sync.</p>
-      <div class="join-cards">
+  const last = lsGet('bt-last-code') || '';
+  const signIn = `
+        <form class="card" data-form="join">
+          <h2>Sign in with our code</h2>
+          <label>Our code<input name="code" value="${esc(last)}" autocomplete="off" autocapitalize="none" spellcheck="false" required></label>
+          ${err ? `<p class="err">${esc(err)}</p>` : ''}
+          <button class="btn primary">Sign in</button>
+        </form>
+        <p class="join-alt">First time? <button class="link" data-act="join-create">Start a new code</button></p>`;
+  const create = `
         <form class="card" data-form="create">
-          <h2>Start with a new code</h2>
+          <h2>Start a new code</h2>
           <p class="muted">Do this once, on one device. It’s your shared login: send it to your sister.</p>
           <label>Our code<input name="code" value="${suggestCode()}" autocomplete="off" autocapitalize="none" spellcheck="false" required minlength="8"></label>
           <div class="two">
@@ -544,14 +550,13 @@ function renderJoin(err = '') {
           </div>
           <button class="btn primary">Create our code</button>
         </form>
-        <form class="card" data-form="join">
-          <h2>Sign in with our code</h2>
-          <p class="muted">Already set up? Type the code you share.</p>
-          <label>Our code<input name="code" autocomplete="off" autocapitalize="none" spellcheck="false" required></label>
-          ${err ? `<p class="err">${esc(err)}</p>` : ''}
-          <button class="btn">Sign in</button>
-        </form>
-      </div>
+        <p class="join-alt">Already have one? <button class="link" data-act="join-signin">Sign in instead</button></p>`;
+  $view.innerHTML = `
+    <section class="join">
+      ${flower(1, 110, 'Bloom Together', 1)}
+      <h1>Bloom Together</h1>
+      <p class="lede">Bella &amp; Izzy’s workouts, in sync.</p>
+      <div class="join-one">${creating ? create : signIn}</div>
     </section>`;
 }
 
@@ -1502,8 +1507,11 @@ async function onClick(e) {
       location.reload();
       return;
     }
+    case 'join-create': renderJoin('', true); break;
+    case 'join-signin': renderJoin(); break;
     case 'leave':
       if (!await ask('Log out?', 'Log out')) return;
+      lsSet('bt-last-code', A.code); // so signing back in is one tap
       lsSet('bt-room', null); setMe(null);
       location.hash = '';
       location.reload();
