@@ -492,7 +492,7 @@ body.big.idle main { opacity: 0; }
 body.big.idle { cursor: none; }
 
 /* ---------- settings ---------- */
-/* Desktop: left = Just for you, All workouts, Account; right = Shared
+/* Desktop: left = Just for you, Recent workouts, Account; right = Shared
    Settings, Workout parts. Phones: one column in a sensible order. */
 .settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
 .settings-col { display: grid; gap: 18px; min-width: 0; }
@@ -574,13 +574,6 @@ body.big.idle { cursor: none; }
 .card-toggle i { margin-left: auto; font-style: normal; color: var(--muted); font-size: 1.1rem; }
 .card-toggle[aria-expanded="true"] { margin-bottom: 12px; }
 .builder .card-toggle[aria-expanded="true"] { margin-bottom: 4px; }
-.older { margin-top: 10px; border-top: 1px solid var(--line); }
-.older-toggle, .month-toggle { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: none; cursor: pointer; padding: 12px 2px; font-weight: 700; font-size: .92rem; text-align: left; }
-.older-toggle i, .month-toggle i { margin-left: auto; font-style: normal; color: var(--muted); }
-.older-toggle span, .month-toggle span { font-weight: 400; }
-.month { background: var(--bg); border-radius: 12px; padding: 0 10px; margin-bottom: 6px; }
-.month-toggle { font-weight: 500; padding: 10px 2px; }
-.month .recent { margin: 0 0 6px; }
 
 /* The hidden player that looks up titles and lengths. */
 .meta-player { position: fixed; left: -10000px; top: 0; width: 200px; height: 113px; opacity: 0; pointer-events: none; }

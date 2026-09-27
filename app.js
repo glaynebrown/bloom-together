@@ -465,6 +465,7 @@ function route() {
   A.route = location.hash.replace(/^#\/?/, '');
   if (A.route === 'build') { location.replace('#/workout'); return; } // old link
   if (A.route !== 'workout') A.ui.justLogged = false;
+  if (A.route !== 'settings') A.ui.historyOpen = false; // Recent workouts always starts folded
   if (A.route !== 'workout') setBig(false);
   window.scrollTo(0, 0);
   render(true);
@@ -978,7 +979,7 @@ function favButton(videos) {
 }
 function favsPanel() {
   const list = favorites();
-  if (!list.length) return `<p class="muted">No favorites yet. Tap the ${icon('heartOutline', 'inline')} on a workout (today’s, the finish screen, or in Settings → All workouts) to save it here with a note.</p>`;
+  if (!list.length) return `<p class="muted">No favorites yet. Tap the ${icon('heartOutline', 'inline')} on a workout (today’s, the finish screen, or in Settings → Recent workouts) to save it here with a note.</p>`;
   return `<ul class="fav-list">${list.map(f => {
     const secs = f.videos.reduce((t, v) => t + (v.seconds || 0), 0);
     return `<li>
@@ -1119,8 +1120,8 @@ async function logWorkout() {
 }
 
 /* ---------- settings ---------- */
-// Whether "All workouts" is folded up (remembered on this device).
-const historyFolded = () => lsGet('bt-history-folded') === '1';
+// "Recent workouts" always starts folded; open it for this visit with its arrow.
+const historyFolded = () => !A.ui.historyOpen;
 // The new code, in the app's own dialog. Resolves the code or null.
 function askCode() {
   return new Promise(resolve => {
@@ -1146,35 +1147,13 @@ function askCode() {
     wrap.querySelector('input').focus();
   });
 }
-// The last 2 weeks are listed; anything older folds away by month.
+// Only the last 2 weeks are listed. Older workouts stay saved (the garden
+// and streak are built from them) but aren't shown here.
 function historyList(history) {
   const row = w => `<li><b>${Dates.nice(w.day)}</b><span class="muted">${w.solo ? `Solo · ${esc(nameOf(w.by))}` : w.videos && w.videos.length ? `${w.videos.length} videos · ${mins(w.seconds)}` : 'Workout'}</span>${favButton(w.videos)}<button class="icon-btn" data-act="del-workout" data-id="${w.id}" title="Delete">${icon('x')}</button></li>`;
   const cutoff = Dates.addDays(Dates.today(), -13);
   const recent = history.filter(w => w.day >= cutoff);
-  const older = history.filter(w => w.day < cutoff);
-  const months = [];
-  older.forEach(w => {
-    const key = w.day.slice(0, 7);
-    let m = months.find(x => x.key === key);
-    if (!m) months.push(m = { key, list: [] });
-    m.list.push(w);
-  });
-  const names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const open = A.ui.openMonths || (A.ui.openMonths = new Set());
-  return `
-    <p class="label">Last 2 weeks</p>
-    <ul class="recent">${recent.map(row).join('') || '<li class="muted">No workouts in the last 2 weeks.</li>'}</ul>
-    ${months.length ? `<div class="older">
-      <button type="button" class="older-toggle" data-act="older" aria-expanded="${!!A.ui.showOlder}">Older workouts <span class="muted">${older.length}</span><i aria-hidden="true">${A.ui.showOlder ? '▴' : '▾'}</i></button>
-      ${A.ui.showOlder ? months.map(m => {
-        const [y, mo] = m.key.split('-').map(Number);
-        const isOpen = open.has(m.key);
-        return `<div class="month">
-          <button type="button" class="month-toggle" data-act="month" data-k="${m.key}" aria-expanded="${isOpen}">${names[mo - 1]} ${y} <span class="muted">${m.list.length}</span><i aria-hidden="true">${isOpen ? '▴' : '▾'}</i></button>
-          ${isOpen ? `<ul class="recent">${m.list.map(row).join('')}</ul>` : ''}
-        </div>`;
-      }).join('') : ''}
-    </div>` : ''}`;
+  return `<ul class="recent">${recent.map(row).join('') || '<li class="muted">No workouts in the last 2 weeks.</li>'}</ul>`;
 }
 // A small month calendar for picking a past day (styled like the rest of the
 // app, unlike the browser's own date picker). Future days can't be picked;
@@ -1239,7 +1218,7 @@ function renderSettings() {
       </section>
       <section class="card s-history history">
         <button type="button" class="card-toggle" data-act="toggle-history" aria-expanded="${!historyFolded()}">
-          <h2>All workouts</h2><span class="muted small">${A.workouts.length}</span><i aria-hidden="true">${historyFolded() ? '▾' : '▴'}</i>
+          <h2>Recent workouts</h2><span class="muted small">last 2 weeks · ${A.workouts.filter(w => w.day >= Dates.addDays(Dates.today(), -13)).length}</span><i aria-hidden="true">${historyFolded() ? '▾' : '▴'}</i>
         </button>
         ${historyFolded() ? '' : `<form data-form="missed" class="missed">
           <input type="hidden" name="day" value="${A.ui.missedDay || Dates.today()}">
@@ -1512,14 +1491,7 @@ async function onClick(e) {
       saveCats(allCats().filter(x => x.key !== c.key));
       break;
     }
-    case 'toggle-history': lsSet('bt-history-folded', historyFolded() ? null : '1'); render(true); break;
-    case 'older': A.ui.showOlder = !A.ui.showOlder; render(true); break;
-    case 'month': {
-      const open = A.ui.openMonths || (A.ui.openMonths = new Set());
-      open.has(el.dataset.k) ? open.delete(el.dataset.k) : open.add(el.dataset.k);
-      render(true);
-      break;
-    }
+    case 'toggle-history': A.ui.historyOpen = !A.ui.historyOpen; render(true); break;
     case 'video-fav': {
       const v = A.videos.find(x => x.id === el.dataset.id);
       if (v) A.store.updateVideo(v.id, { fav: !v.fav });
