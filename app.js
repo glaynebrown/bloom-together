@@ -423,7 +423,7 @@ function tagPending(videos) {
 
 function startRoom() {
   if (!A.me) return renderWho();
-  A.store.watchVideos(v => { A.videos = v; tagPending(v); render(); });
+  A.store.watchVideos(v => { A.videos = v; tagPending(v); fillAuthors(v); render(); });
   A.store.watchWorkouts(w => { A.workouts = w; render(); });
   A.store.watchPresence(p => { A.presence = p; renderTop(); });
   A.store.watchLive(onLive);
@@ -778,7 +778,7 @@ function renderLibrary() {
     if (u.len === 'short' && !(v.seconds && m <= 10.5)) return false;
     if (u.len === 'mid' && !(m > 10.5 && m <= 20.5)) return false;
     if (u.len === 'long' && !(m > 20.5)) return false;
-    if (u.q && !(v.title || '').toLowerCase().includes(u.q.toLowerCase())) return false;
+    if (u.q && !matches(v, u.q)) return false;
     if (u.favOnly && !v.fav) return false;
     return true;
   });
@@ -807,7 +807,7 @@ function renderLibrary() {
     <div class="filters">
       <div class="chips">${chip('all', 'All', A.videos.length)}${allCats().map(c => chip(c.key, c.use === false ? `${esc(c.short)} <em>library</em>` : esc(c.short), count(c.key))).join('')}${untagged ? chip('none', 'Needs a category', untagged) : ''}</div>
       <div class="filter-row">
-        <input type="search" data-bind="q" value="${esc(u.q)}" placeholder="Search titles">
+        <input type="search" data-bind="q" value="${esc(u.q)}" placeholder="Search titles or creators">
         ${favFilter(u.favOnly, 'lib-fav')}
         <select data-bind="len" aria-label="Length">
           <option value="any" ${u.len === 'any' ? 'selected' : ''}>Any length</option>
@@ -841,6 +841,7 @@ function videoCard(v, queued) {
   return `<article class="vcard ${v.noEmbed ? 'blocked' : ''}">
     <div class="thumb"><img src="${YT_.thumb(v.yt)}" alt="" loading="lazy"><span class="len">${v.seconds ? clock(v.seconds) : '?'}</span></div>
     <h3>${esc(v.title)}</h3>
+    ${v.author ? `<p class="creator">${esc(v.author)}</p>` : ''}
     ${v.noEmbed ? `<p class="err small">This video can’t play inside other apps (the creator turned that off).</p>` : ''}
     <div class="tag-toggles">${allCats().map(c => `<button class="tag ${(v.cats || []).includes(c.key) ? 'on' : ''}" data-act="tag" data-id="${v.id}" data-c="${c.key}">${c.short}</button>`).join('')}</div>
     <div class="row-between vfoot">
@@ -877,7 +878,7 @@ async function importLink(link) {
     const cats = YT_.guessCats(info.title, allCats());
     if (!cats.length) needCat++;
     if (info.noEmbed) blocked++;
-    await A.store.addVideos([{ yt, title: info.title, seconds: info.seconds, cats, noEmbed: !!info.noEmbed }]);
+    await A.store.addVideos([{ yt, title: info.title, author: info.author || '', seconds: info.seconds, cats, noEmbed: !!info.noEmbed }]);
     added++;
   }
   A.ui.importMsg = `Added ${added} video${added === 1 ? '' : 's'}.` +
@@ -942,18 +943,37 @@ function pickPanel() {
   const q = (A.ui.pickQ || '').toLowerCase();
   const inQueue = new Set(queue().map(x => x.vid));
   const list = A.videos
-    .filter(v => !v.noEmbed && buildable(v) && (cat === 'all' || (v.cats || []).includes(cat)) && (!q || (v.title || '').toLowerCase().includes(q)) && (!A.ui.pickFav || v.fav))
+    .filter(v => !v.noEmbed && buildable(v) && (cat === 'all' || (v.cats || []).includes(cat)) && (!q || matches(v, q)) && (!A.ui.pickFav || v.fav))
     .sort((a, b) => (a.title || '').localeCompare(b.title || ''));
   if (!A.videos.length) return '<p class="muted">No videos yet. Add your playlist on the <a href="#/library">Library</a> tab.</p>';
   return `
     <div class="chips pick-chips">${[['all', 'All'], ...buildCats().map(c => [c.key, c.short])].map(([k, l]) => `<button class="chip ${cat === k ? 'on' : ''}" data-act="pick-cat" data-c="${k}">${esc(l)}</button>`).join('')}</div>
-    <div class="pick-search-row"><input type="search" data-bind="pq" value="${esc(A.ui.pickQ || '')}" placeholder="Search titles" class="pick-search">${favFilter(A.ui.pickFav, 'pick-fav')}</div>
+    <div class="pick-search-row"><input type="search" data-bind="pq" value="${esc(A.ui.pickQ || '')}" placeholder="Search titles or creators" class="pick-search">${favFilter(A.ui.pickFav, 'pick-fav')}</div>
     <ul class="pick-list">${list.map(v => `<li>
       <img src="${YT_.thumb(v.yt)}" alt="" loading="lazy">
       <div class="q-text"><span class="q-tag">${esc(videoCats(v).map(partName).join(' · '))}</span><span class="q-title">${esc(v.title)}</span><span class="muted small">${mins(v.seconds)}</span></div>
       ${videoHeart(v)}
       ${inQueue.has(v.id) ? `<span class="queued">Added ✓</span>` : `<button class="icon-btn add" data-act="add-q" data-id="${v.id}" title="Add to today">${icon('plus')}</button>`}
     </li>`).join('') || `<li class="muted">${A.ui.pickFav && !A.videos.some(v => v.fav) ? 'No favorite videos yet. Tap the ♡ on a video to add it.' : 'No videos match.'}</li>`}</ul>`;
+}
+
+// Search looks at the title and the creator (channel), so "madfit" finds her videos.
+const matches = (v, q) => `${v.title || ''} ${v.author || ''}`.toLowerCase().includes(q.toLowerCase().trim());
+
+// Videos imported before creators were saved: look them up once, quietly.
+let fillingAuthors = false;
+async function fillAuthors(videos) {
+  if (fillingAuthors) return;
+  const todo = videos.filter(v => v.author === undefined);
+  if (!todo.length) return;
+  fillingAuthors = true;
+  for (let i = 0; i < todo.length; i += 4) {
+    await Promise.all(todo.slice(i, i + 4).map(async v => {
+      const { author } = await YT_.oembed(v.yt);
+      await A.store.updateVideo(v.id, { author }).catch(() => {});
+    }));
+  }
+  fillingAuthors = false;
 }
 
 /* ---------- favorite videos (video.fav, shared) ---------- */

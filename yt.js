@@ -80,15 +80,16 @@ const YT_ = (() => {
   // One lookup at a time, since there's one hidden player.
   const serial = fn => { const p = queue.then(fn, fn); queue = p.catch(() => {}); return p; };
 
-  async function oembedTitle(yt) {
+  // YouTube's public oEmbed: a video's title and channel (creator) name.
+  async function oembed(yt) {
     try {
       const r = await fetch(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(`https://www.youtube.com/watch?v=${yt}`)}`);
-      if (r.ok) return (await r.json()).title || '';
+      if (r.ok) { const j = await r.json(); return { title: j.title || '', author: j.author_name || '' }; }
     } catch (e) {}
-    return '';
+    return { title: '', author: '' };
   }
 
-  // { title, seconds, noEmbed } for one video.
+  // { title, author, seconds, noEmbed } for one video.
   const info = yt => serial(async () => {
     const p = await getMeta();
     metaError = null;
@@ -96,21 +97,21 @@ const YT_ = (() => {
     p.cueVideoById(yt);
     let started = false;
     const t0 = Date.now();
-    let title = '', seconds = 0;
+    let title = '', author = '', seconds = 0;
     while (Date.now() - t0 < 9000) {
       await sleep(200);
       if (metaError) break;
       const data = p.getVideoData ? p.getVideoData() : {};
-      if (data && data.video_id === yt && data.title) title = data.title;
+      if (data && data.video_id === yt && data.title) { title = data.title; author = data.author || ''; }
       seconds = Math.round(p.getDuration() || 0);
       if (title && seconds) break;
       // Some videos only report their length once playing (muted, hidden).
       if (!started && Date.now() - t0 > 2000) { started = true; p.mute(); p.playVideo(); }
     }
     if (started) p.pauseVideo();
-    if (!title) title = await oembedTitle(yt);
+    if (!title || !author) { const o = await oembed(yt); title = title || o.title; author = author || o.author; }
     const noEmbed = metaError === 101 || metaError === 150;
-    return { title: title || 'Untitled video', seconds, noEmbed, missing: metaError === 100 };
+    return { title: title || 'Untitled video', author, seconds, noEmbed, missing: metaError === 100 };
   });
 
   // Video ids in a public or unlisted playlist.
@@ -126,5 +127,5 @@ const YT_ = (() => {
     return [];
   });
 
-  return { ready, parseLink, thumb, guessCats, info, playlist };
+  return { ready, parseLink, thumb, guessCats, info, playlist, oembed };
 })();

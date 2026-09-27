@@ -390,6 +390,7 @@ input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: 1
 .vcard.editing img { margin-bottom: 10px; }
 .len { position: absolute; right: 6px; bottom: 6px; background: rgba(20, 5, 2, .78); color: #fff; font-size: .75rem; font-weight: 700; padding: 1px 6px; border-radius: 6px; }
 .vcard h3 { font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: .95rem; line-height: 1.3; margin: 10px 2px 8px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.creator { margin: -4px 2px 8px; font-size: .8rem; color: var(--muted); }
 .tag-toggles { display: flex; gap: 5px; flex-wrap: wrap; margin: 0 0 6px; }
 .tag { border: 1px dashed var(--line); background: transparent; border-radius: 99px; padding: 3px 10px; font-size: .8rem; cursor: pointer; color: var(--muted); }
 .tag.on { background: var(--accent-soft); border: 1px solid transparent; color: var(--ink); font-weight: 500; }
