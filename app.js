@@ -760,6 +760,7 @@ function renderLibrary() {
     if (u.len === 'mid' && !(m > 10.5 && m <= 20.5)) return false;
     if (u.len === 'long' && !(m > 20.5)) return false;
     if (u.q && !(v.title || '').toLowerCase().includes(u.q.toLowerCase())) return false;
+    if (u.favOnly && !v.fav) return false;
     return true;
   });
   const sorts = {
@@ -788,6 +789,7 @@ function renderLibrary() {
       <div class="chips">${chip('all', 'All', A.videos.length)}${allCats().map(c => chip(c.key, c.use === false ? `${esc(c.short)} <em>library</em>` : esc(c.short), count(c.key))).join('')}${untagged ? chip('none', 'Needs a category', untagged) : ''}</div>
       <div class="filter-row">
         <input type="search" data-bind="q" value="${esc(u.q)}" placeholder="Search titles">
+        ${favFilter(u.favOnly, 'lib-fav')}
         <select data-bind="len" aria-label="Length">
           <option value="any" ${u.len === 'any' ? 'selected' : ''}>Any length</option>
           <option value="short" ${u.len === 'short' ? 'selected' : ''}>10 min or less</option>
@@ -803,7 +805,7 @@ function renderLibrary() {
       </div>
     </div>
     ${u.cat === 'none' ? `<p class="hint">Tap the categories on each video to sort them. They’ll leave this list once they have one.</p>` : ''}
-    <div class="vgrid">${list.map(v => videoCard(v, inQueue.has(v.id))).join('') || `<p class="muted empty">${A.videos.length ? 'No videos match.' : 'No videos yet — paste your playlist link above.'}</p>`}</div>`;
+    <div class="vgrid">${list.map(v => videoCard(v, inQueue.has(v.id))).join('') || `<p class="muted empty">${!A.videos.length ? 'No videos yet — paste your playlist link above.' : u.favOnly && !A.videos.some(v => v.fav) ? 'No favorite videos yet. Tap the ♡ on a video to add it here.' : 'No videos match.'}</p>`}</div>`;
 }
 
 function videoCard(v, queued) {
@@ -825,6 +827,7 @@ function videoCard(v, queued) {
     <div class="row-between vfoot">
       <span class="muted small">${done ? `Last done ${Dates.monthDay(done)}` : 'Not done yet'}</span>
       <span>
+        ${videoHeart(v)}
         <button class="icon-btn" data-act="edit" data-id="${v.id}" title="Edit">${icon('edit')}</button>
         ${v.noEmbed ? '' : queued ? `<span class="queued">In workout ✓</span>` : `<button class="btn small" data-act="add-q" data-id="${v.id}">${icon('plus')} Add</button>`}
       </span>
@@ -916,18 +919,27 @@ function pickPanel() {
   const q = (A.ui.pickQ || '').toLowerCase();
   const inQueue = new Set(queue().map(x => x.vid));
   const list = A.videos
-    .filter(v => !v.noEmbed && buildable(v) && (cat === 'all' || (v.cats || []).includes(cat)) && (!q || (v.title || '').toLowerCase().includes(q)))
+    .filter(v => !v.noEmbed && buildable(v) && (cat === 'all' || (v.cats || []).includes(cat)) && (!q || (v.title || '').toLowerCase().includes(q)) && (!A.ui.pickFav || v.fav))
     .sort((a, b) => (a.title || '').localeCompare(b.title || ''));
   if (!A.videos.length) return '<p class="muted">No videos yet. Add your playlist on the <a href="#/library">Library</a> tab.</p>';
   return `
     <div class="chips pick-chips">${[['all', 'All'], ...buildCats().map(c => [c.key, c.short])].map(([k, l]) => `<button class="chip ${cat === k ? 'on' : ''}" data-act="pick-cat" data-c="${k}">${esc(l)}</button>`).join('')}</div>
-    <input type="search" data-bind="pq" value="${esc(A.ui.pickQ || '')}" placeholder="Search titles" class="pick-search">
+    <div class="pick-search-row"><input type="search" data-bind="pq" value="${esc(A.ui.pickQ || '')}" placeholder="Search titles" class="pick-search">${favFilter(A.ui.pickFav, 'pick-fav')}</div>
     <ul class="pick-list">${list.map(v => `<li>
       <img src="${YT_.thumb(v.yt)}" alt="" loading="lazy">
       <div class="q-text"><span class="q-tag">${esc(videoCats(v).map(partName).join(' · '))}</span><span class="q-title">${esc(v.title)}</span><span class="muted small">${mins(v.seconds)}</span></div>
+      ${videoHeart(v)}
       ${inQueue.has(v.id) ? `<span class="queued">Added ✓</span>` : `<button class="icon-btn add" data-act="add-q" data-id="${v.id}" title="Add to today">${icon('plus')}</button>`}
-    </li>`).join('') || '<li class="muted">No videos match.</li>'}</ul>`;
+    </li>`).join('') || `<li class="muted">${A.ui.pickFav && !A.videos.some(v => v.fav) ? 'No favorite videos yet. Tap the ♡ on a video to add it.' : 'No videos match.'}</li>`}</ul>`;
 }
+
+/* ---------- favorite videos (video.fav, shared) ---------- */
+const videoHeart = v => `<button class="icon-btn heart ${v.fav ? 'on' : ''}" data-act="video-fav" data-id="${v.id}" title="${v.fav ? 'Favorite video' : 'Add to favorite videos'}" aria-pressed="${!!v.fav}">${icon(v.fav ? 'heart' : 'heartOutline')}</button>`;
+// The heart button next to search: tap to show only favorite videos.
+const favFilter = (on, act) => {
+  const n = A.videos.filter(v => v.fav).length;
+  return `<button class="fav-filter ${on ? 'on' : ''}" data-act="${act}" aria-pressed="${!!on}" title="${on ? 'Showing favorites (tap for all)' : 'Show only favorite videos'}">${icon(on ? 'heart' : 'heartOutline')}<span>${n}</span></button>`;
+};
 
 /* ---------- favorite workouts (room.favorites) ---------- */
 const favorites = () => Object.entries((A.room && A.room.favorites) || {}).map(([id, f]) => ({ id, ...f })).sort((a, b) => (b.t || 0) - (a.t || 0));
@@ -1472,6 +1484,13 @@ async function onClick(e) {
       render(true);
       break;
     }
+    case 'video-fav': {
+      const v = A.videos.find(x => x.id === el.dataset.id);
+      if (v) A.store.updateVideo(v.id, { fav: !v.fav });
+      break;
+    }
+    case 'lib-fav': A.ui.favOnly = !A.ui.favOnly; render(true); break;
+    case 'pick-fav': A.ui.pickFav = !A.ui.pickFav; render(true); break;
     case 'build-tab': A.ui.buildTab = el.dataset.k; lsSet('bt-build-tab', el.dataset.k); render(true); break;
     case 'pick-cat': A.ui.pickCat = el.dataset.c; render(true); break;
     case 'fav': await toggleFav(JSON.parse(el.dataset.src)); break;

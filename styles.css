@@ -368,9 +368,14 @@ input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: 1
 .chip span { color: var(--muted); font-weight: 400; margin-left: 2px; }
 .chip.on { background: var(--primary); color: var(--on-primary); border-color: transparent; }
 .chip.on span { color: inherit; opacity: .8; }
-.filter-row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; }
+.filter-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px; }
 .filter-row input, .filter-row select { margin-top: 0; }
-@media (max-width: 560px) { .filter-row { grid-template-columns: 1fr 1fr; } .filter-row input { grid-column: span 2; } }
+@media (max-width: 560px) { .filter-row { grid-template-columns: 1fr 1fr auto; } .filter-row input { grid-column: span 2; } .filter-row select:last-child { grid-column: span 2; } }
+.fav-filter { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--muted); cursor: pointer; font-weight: 700; font-size: .85rem; }
+.fav-filter .ico { width: 20px; height: 20px; }
+.fav-filter.on { background: var(--accent-soft); border-color: transparent; color: var(--accent-ink); }
+.pick-search-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.pick-search-row .pick-search { margin: 0 !important; flex: 1; }
 .vgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
 .vcard { background: var(--surface); border-radius: 18px; padding: 10px 10px 8px; box-shadow: var(--shadow); display: flex; flex-direction: column; min-width: 0; }
 .vcard.blocked { opacity: .65; }
