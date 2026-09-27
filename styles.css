@@ -142,6 +142,13 @@ img { display: block; max-width: 100%; }
 }
 
 main { max-width: 1180px; margin: 0 auto; padding: 8px 20px 60px; }
+/* Opened from the home screen, iPhone blurs the very top edge of the screen.
+   Move the header down into the clear, and take the same space back from the
+   gap above each page's title, so the page itself doesn't move. */
+@media (display-mode: standalone) {
+  .top { padding-top: calc(max(12px, env(safe-area-inset-top)) + 14px); }
+  .hello, .page-head, .lib-head { margin-top: 4px; }
+}
 @media (max-width: 720px) { main { padding: 4px 16px 60px; } }
 
 /* ---------- basics ---------- */
