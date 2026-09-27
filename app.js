@@ -1219,7 +1219,8 @@ function renderSettings() {
   return `
     <section class="page-head"><h1>Settings</h1></section>
     <div class="settings-grid">
-      <section class="card">
+      <div class="settings-col">
+      <section class="card s-you">
         <h2>Just for you</h2>
         <p class="muted small">These only change this device.</p>
         <form data-form="name" class="name-form">
@@ -1236,7 +1237,30 @@ function renderSettings() {
         ${colorEditor(look)}
         <p class="muted small">Using this device as <b>${esc(nameOf(A.me))}</b>. <button class="link" data-act="switch-me">Switch to ${esc(nameOf(other()))}</button></p>
       </section>
-      <section class="card">
+      <section class="card s-history history">
+        <button type="button" class="card-toggle" data-act="toggle-history" aria-expanded="${!historyFolded()}">
+          <h2>All workouts</h2><span class="muted small">${A.workouts.length}</span><i aria-hidden="true">${historyFolded() ? '▾' : '▴'}</i>
+        </button>
+        ${historyFolded() ? '' : `<form data-form="missed" class="missed">
+          <input type="hidden" name="day" value="${A.ui.missedDay || Dates.today()}">
+          <div class="field"><span class="field-label">Forgot to log one?</span>
+            <button type="button" class="date-btn" data-act="cal-toggle" aria-expanded="${!!A.ui.calOpen}">${Dates.nice(A.ui.missedDay || Dates.today())}<span aria-hidden="true">▾</span></button>
+          </div>
+          <button class="btn small">Add it</button>
+        </form>
+        ${A.ui.calOpen ? calendar() : ''}
+        ${historyList(history)}`}
+      </section>
+      <section class="card s-account">
+        <h2>Account</h2>
+        <p class="label first">Our code</p>
+        <div class="code-row"><code>${esc(A.code)}</code><button class="btn small" data-act="copy-code">Copy</button><button class="btn small" data-act="change-code">Change</button></div>
+        <p class="muted small">Your shared login. To use the app on another device, open it and choose <b>Sign in with our code</b>.</p>
+        <button class="btn ghost logout" data-act="leave">Log out</button>
+      </section>
+      </div>
+      <div class="settings-col">
+      <section class="card s-shared">
         <h2>Shared Settings</h2>
         <p class="label">Weekly goal</p>
         <div class="stepper">
@@ -1251,7 +1275,7 @@ function renderSettings() {
         <label class="switch row"><input type="checkbox" data-act="solo-toggle" ${settings().solo ? 'checked' : ''}><span></span><b>Solo workouts</b></label>
         <p class="muted small">Shows a “Log a solo workout” button that counts toward the streak.</p>
       </section>
-      <section class="card parts">
+      <section class="card s-parts parts">
         <h2>Workout parts</h2>
         <p class="muted small">The body parts you tag videos with and build mixes from. The first one used in workouts is your warm-up: Surprise us always starts with it.</p>
         <ul class="part-list">${allCats().map((c, i, list) => `<li>
@@ -1269,27 +1293,7 @@ function renderSettings() {
         </form>
         <p class="muted small">New parts tag matching videos automatically from their titles. <b>×2</b> means one of those videos counts as two parts, so Surprise us picks it instead of two separate parts (like Full body). Tap <b>Workouts</b> to switch a part to <b>Library</b>: its videos stay tagged and saved, but aren’t used to build workouts until you switch it back.</p>
       </section>
-      <section class="card history">
-        <button type="button" class="card-toggle" data-act="toggle-history" aria-expanded="${!historyFolded()}">
-          <h2>All workouts</h2><span class="muted small">${A.workouts.length}</span><i aria-hidden="true">${historyFolded() ? '▾' : '▴'}</i>
-        </button>
-        ${historyFolded() ? '' : `<form data-form="missed" class="missed">
-          <input type="hidden" name="day" value="${A.ui.missedDay || Dates.today()}">
-          <div class="field"><span class="field-label">Forgot to log one?</span>
-            <button type="button" class="date-btn" data-act="cal-toggle" aria-expanded="${!!A.ui.calOpen}">${Dates.nice(A.ui.missedDay || Dates.today())}<span aria-hidden="true">▾</span></button>
-          </div>
-          <button class="btn small">Add it</button>
-        </form>
-        ${A.ui.calOpen ? calendar() : ''}
-        ${historyList(history)}`}
-      </section>
-      <section class="card">
-        <h2>Account</h2>
-        <p class="label first">Our code</p>
-        <div class="code-row"><code>${esc(A.code)}</code><button class="btn small" data-act="copy-code">Copy</button><button class="btn small" data-act="change-code">Change</button></div>
-        <p class="muted small">Your shared login. To use the app on another device, open it and choose <b>Sign in with our code</b>.</p>
-        <button class="btn ghost logout" data-act="leave">Log out</button>
-      </section>
+      </div>
     </div>`;
 }
 
