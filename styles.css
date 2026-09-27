@@ -336,8 +336,14 @@ input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: 1
   .q-actions { width: 100%; justify-content: flex-end; }
 }
 
-.plots { display: flex; gap: 6px; overflow-x: auto; padding: 6px 0 10px; }
-.plot { display: flex; flex-direction: column; align-items: center; min-width: 64px; font-size: .75rem; color: var(--muted); }
+/* The garden card is as tall as the week card beside it on wide screens, so
+   the row of flowers sits in the middle of it, and the flowers share the
+   width (a bit bigger when there's room). On phones the row scrolls. */
+.garden { display: flex; flex-direction: column; }
+.plots { display: flex; gap: 4px; overflow-x: auto; padding: 6px 0 10px; margin: auto 0; scrollbar-width: none; }
+.plots::-webkit-scrollbar { display: none; }
+.plot { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; min-width: 48px; font-size: .75rem; color: var(--muted); }
+.plot .flower { width: min(100%, 64px); height: auto; aspect-ratio: 1; }
 /* Centered on wide screens without cutting off the start when it scrolls. */
 .plot:first-child { margin-left: auto; }
 .plot:last-child { margin-right: auto; }

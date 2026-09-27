@@ -611,7 +611,8 @@ function weekCard(count, streak) {
   const label = A.ui.weekOffset === 0 ? 'This week' : A.ui.weekOffset === 1 ? 'Next week' : A.ui.weekOffset === -1 ? 'Last week' : `Week of ${Dates.monthDay(week)}`;
   const shown = A.ui.weekOffset === 0 ? count : weekCount;
   const goal = goalFor(week);
-  const msg = shown >= goal ? 'Full bloom!' : A.ui.weekOffset >= 0 ? `${goal - shown} more to bloom by Saturday` : '';
+  const when = A.ui.weekOffset === 0 ? 'this week' : A.ui.weekOffset === 1 ? 'next week' : 'that week';
+  const msg = shown >= goal ? 'Full bloom!' : A.ui.weekOffset >= 0 ? `${goal - shown} more to bloom ${when}` : '';
   return `
     <section class="card week">
       <div class="week-top">
