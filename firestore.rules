@@ -1,0 +1,19 @@
+rules_version = '2';
+
+// There are no accounts: each device signs in anonymously, and knowing "our
+// code" (the room's id) is what lets you in. Rooms can't be listed or searched, so a
+// long, unguessable code (the app suggests one) keeps it private.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /rooms/{room} {
+      // (delete is for "Change our code", which moves everything to a new code)
+      allow get, create, update, delete: if request.auth != null && room.size() >= 8;
+      allow list: if false;
+
+      match /{sub=**} {
+        allow read, write: if request.auth != null
+          && exists(/databases/$(database)/documents/rooms/$(room));
+      }
+    }
+  }
+}

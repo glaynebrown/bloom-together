@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bloom Together</title>
+<meta name="description" content="Bella & Izzy's workouts: synced videos, a weekly plan and a shared streak.">
+<meta name="theme-color" content="#F7E9D9">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bloom">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap">
+<link rel="stylesheet" href="styles.css">
+<script>
+  // Apply this device's look before anything draws, so there's no flash.
+  // Also apply any colors customized for that look (app.js keeps these in sync).
+  document.documentElement.dataset.look = 'nook';
+  try {
+    var look = localStorage.getItem('bt-look') || 'nook';
+    document.documentElement.dataset.look = look;
+    var mine = (JSON.parse(localStorage.getItem('bt-custom')) || {})[look] || {};
+    for (var k in mine) document.documentElement.style.setProperty(k, mine[k]);
+  } catch (e) {}
+</script>
+</head>
+<body>
+<div id="banner" class="banner" hidden></div>
+<header id="top" class="top" hidden></header>
+<main id="view"><p class="loading">Loading…</p></main>
+<!-- The one YouTube player lives outside #view so it survives screen changes. -->
+<div id="stage" class="stage off">
+  <div class="stage-frame"><div id="player"></div><div id="shield" class="shield"></div></div>
+  <a class="stage-back" href="#/workout">Back to the workout ›</a>
+</div>
+<div id="meta-player-wrap" class="meta-player" aria-hidden="true"><div id="meta-player"></div></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="dates.js"></script>
+<script src="store.js"></script>
+<script src="demo.js"></script>
+<script src="yt.js"></script>
+<script src="sync.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
