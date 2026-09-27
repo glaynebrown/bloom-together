@@ -84,6 +84,7 @@ body {
   font: 16px/1.5 'DM Sans', system-ui, -apple-system, sans-serif;
   min-height: 100vh;
   padding-bottom: env(safe-area-inset-bottom);
+  overflow-x: clip; /* never let anything nudge the page sideways on a phone */
 }
 h1, h2, h3 { color: var(--heading, inherit); font-family: 'Playfair Display', Georgia, serif; font-weight: 500; line-height: 1.15; margin: 0 0 .4em; }
 h1 { font-size: clamp(1.9rem, 4vw, 2.6rem); }
@@ -91,7 +92,10 @@ h2 { font-size: 1.35rem; }
 h3 { font-size: 1.05rem; }
 p { margin: 0 0 .6em; }
 a { color: inherit; }
-button, input, select { font: inherit; color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
+/* iPhone Safari zooms into any text box under 16px (and stays zoomed), so
+   every box is at least 16px. */
+input:not([type=checkbox]):not([type=color]), select, textarea { font-size: max(16px, 1em); }
 img { display: block; max-width: 100%; }
 .muted { color: var(--muted); }
 .small { font-size: .85rem; }
@@ -478,7 +482,7 @@ body.big.idle { cursor: none; }
 .color-row > span { flex: 1; font-size: .92rem; min-width: 0; }
 .color-row.changed > span { font-weight: 700; }
 .color-row input[type=color] { width: 40px; height: 34px; padding: 2px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); cursor: pointer; flex: none; }
-.color-row input.hex { width: 92px; flex: none; margin: 0; min-height: 34px; padding: 4px 8px; font-family: ui-monospace, Menlo, monospace; font-size: .85rem; text-transform: uppercase; }
+.color-row input.hex { width: 104px; flex: none; margin: 0; min-height: 34px; padding: 4px 8px; font-family: ui-monospace, Menlo, monospace; font-size: 16px; text-transform: uppercase; }
 .color-editor > .btn { margin-top: 12px; }
 .color-row [hidden-slot] { visibility: hidden; }
 .sw { display: flex; }
