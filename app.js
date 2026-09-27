@@ -496,7 +496,7 @@ function renderShield() {
   const st = Sync.status();
   const visible = A.route === 'workout' || isRunning();
   let html = '';
-  if (visible && isRunning() && !st.primed) html = `<button class="tap-in" data-act="tap-in">${flower(3, 44)}<span>Tap to join in</span><small>Lets this device play the video</small></button>`;
+  if (visible && isRunning() && !st.primed) html = `<button class="tap-in" data-act="tap-in">${flower(1, 44, '', 1)}<span>Tap to join in</span><small>Lets this device play the video</small></button>`;
   else if (visible && st.needTap) html = `<button class="tap-in" data-act="tap-in"><span>Tap to catch up</span><small>The browser needs a tap to start the video</small></button>`;
   if ($shield.dataset.html !== html) { $shield.innerHTML = html; $shield.dataset.html = html; }
   $shield.classList.toggle('active', !!html);
@@ -530,7 +530,7 @@ function renderJoin(err = '') {
   $top.hidden = true;
   $view.innerHTML = `
     <section class="join">
-      ${flower(3, 110)}
+      ${flower(1, 110, 'Bloom Together', 1)}
       <h1>Bloom Together</h1>
       <p class="lede">Bella &amp; Izzy’s workouts, in sync.</p>
       <div class="join-cards">
@@ -559,7 +559,7 @@ function renderWho() {
   $top.hidden = true;
   $view.innerHTML = `
     <section class="join">
-      ${flower(2, 90)}
+      ${flower(1, 90, 'Bloom Together', 1)}
       <h1>Who’s this?</h1>
       <p class="lede">This device will remember, so it always says hi to the right sister.</p>
       <div class="who">
