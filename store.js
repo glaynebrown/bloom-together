@@ -13,7 +13,7 @@
      rooms/{code}/live/now        what's playing right now (see sync.js)
      rooms/{code}/workouts/{id}   { day: 'YYYY-MM-DD', videos: [{ vid, yt, title, seconds }],
                                     seconds, solo?, by, t }
-     rooms/{code}/presence/{p1|p2} { name, seen }   heartbeat every 20s
+     rooms/{code}/presence/{p1|p2} { name, seen }   heartbeat every 15s; seen: null when away
 
    Devices sign in anonymously; the room code is the key. When
    firebase-config.js hasn't been filled in, demo.js stands in (sample mode). */
@@ -161,6 +161,7 @@ const Store = (() => {
     deleteWorkout: id => sub('workouts').doc(id).delete(),
 
     heartbeat: (me, name) => sub('presence').doc(me).set({ name, seen: FV.serverTimestamp() }).catch(() => {}),
+    away: me => sub('presence').doc(me).set({ seen: null }, { merge: true }).catch(() => {}),
     watchPresence: cb => sub('presence').onSnapshot(snap => {
       const out = {};
       snap.docs.forEach(d => {

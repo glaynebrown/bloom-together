@@ -68,7 +68,8 @@ const videoCats = v => (v.cats || []).filter(k => catOf(k)); // ignores removed 
 // The Work Out tab shows the player while a workout is going (and until it's
 // logged, plus the "Logged!" moment); otherwise it shows today's plan + builder.
 const playerView = () => isRunning() || (!!A.live && A.live.mode === 'finished' && (!A.live.logged || A.ui.justLogged));
-const online = p => !!A.presence[p] && A.store.now() - A.presence[p] < 50000;
+// Green light: that device checked in within the last 40 seconds.
+const online = p => !!A.presence[p] && A.store.now() - A.presence[p] < 40000;
 const clock = sec => {
   sec = Math.max(0, Math.floor(sec || 0));
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
@@ -428,13 +429,18 @@ function startRoom() {
   A.store.watchPresence(p => { A.presence = p; renderTop(); });
   A.store.watchLive(onLive);
   Sync.init({ store: A.store, me: A.me, getSettings: settings, onChange: onSyncChange });
-  const beat = () => A.store.heartbeat(A.me, nameOf(A.me));
+  // Check in every 15s while the app is on screen (or a workout is playing).
+  // Closing it, switching away, or locking the phone marks you away right away.
+  const here = () => document.visibilityState === 'visible' || isRunning();
+  const beat = () => { if (here()) A.store.heartbeat(A.me, nameOf(A.me)); };
   beat();
-  setInterval(beat, 20000);
+  setInterval(beat, 15000);
+  document.addEventListener('visibilitychange', () => { if (here()) beat(); else A.store.away(A.me); renderTop(); });
+  window.addEventListener('pagehide', () => A.store.away(A.me));
   A.store.calibrate(A.me);
   setInterval(() => A.store.calibrate(A.me), 10 * 60000);
   setInterval(tick, 250);
-  setInterval(renderTop, 15000);
+  setInterval(renderTop, 5000);
   route();
 }
 

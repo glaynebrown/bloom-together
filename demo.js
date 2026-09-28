@@ -116,6 +116,14 @@ const DemoStore = (() => {
       emit();
       if (channel) channel.postMessage(code);
     },
+    away: async me => {
+      const all = load();
+      if (!all[code]) return;
+      all[code].presence = { ...(all[code].presence || {}), [me]: 0 };
+      try { localStorage.setItem(KEY, JSON.stringify(all)); } catch (e) {}
+      emit();
+      if (channel) channel.postMessage(code);
+    },
     watchPresence: cb => watch('presence', cb),
   };
 })();
