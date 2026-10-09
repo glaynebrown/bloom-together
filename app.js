@@ -275,7 +275,11 @@ function recentVids() {
 }
 // A random video for a slot, preferring ones you haven't done lately.
 function pick(slot, min, max, exclude = new Set()) {
-  const pool = A.videos.filter(v => !v.noEmbed && (v.cats || []).includes(slot) && fits(v, min, max) && !exclude.has(v.id));
+  // A "counts as 2" part (Full body) never uses a video that's also tagged as the warm-up/stretch.
+  const warm = (buildCats()[0] || {}).key;
+  const big = ((catOf(slot) || {}).worth || 1) >= 2;
+  const pool = A.videos.filter(v => !v.noEmbed && (v.cats || []).includes(slot) && fits(v, min, max) && !exclude.has(v.id)
+    && !(big && warm && warm !== slot && (v.cats || []).includes(warm)));
   // (slot is always a workout part here, so library-only parts never get picked)
   const recent = recentVids();
   const fresh = pool.filter(v => !recent.has(v.id));
@@ -412,6 +416,19 @@ function addNewDefaults(r) {
   });
   if (fresh.length) A.pendingTag = fresh; // tagged once the library loads (startRoom)
 }
+// One-time cleanup: stretch videos that were auto-tagged Full body (e.g.
+// "Full Body Stretch") lose the Full body tag. Runs once per code.
+function fixStretchFullBody(videos) {
+  if (!videos.length || !A.room || (A.room.cleanups || {}).fullbodyStretch) return;
+  A.store.updateRoom({ 'cleanups.fullbodyStretch': true });
+  A.room.cleanups = { ...(A.room.cleanups || {}), fullbodyStretch: true };
+  videos.forEach(v => {
+    const cats = v.cats || [];
+    if (cats.includes('fullbody') && !YT_.guessCats(v.title, [{ key: 'fullbody' }]).length && /stretch|warm[\s-]?up|mobility|cool[\s-]?down|yoga|flexib/i.test(v.title || '')) {
+      A.store.updateVideo(v.id, { cats: cats.filter(k => k !== 'fullbody') });
+    }
+  });
+}
 function tagPending(videos) {
   if (!A.pendingTag || !videos.length) return;
   const fresh = A.pendingTag;
@@ -424,7 +441,7 @@ function tagPending(videos) {
 
 function startRoom() {
   if (!A.me) return renderWho();
-  A.store.watchVideos(v => { A.videos = v; tagPending(v); fillAuthors(v); render(); });
+  A.store.watchVideos(v => { A.videos = v; tagPending(v); fillAuthors(v); fixStretchFullBody(v); render(); });
   A.store.watchWorkouts(w => { A.workouts = w; render(); });
   A.store.watchPresence(p => { A.presence = p; renderTop(); });
   A.store.watchLive(onLive);

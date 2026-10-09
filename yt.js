@@ -44,7 +44,11 @@ const YT_ = (() => {
   };
   function guessCats(title, parts) {
     const t = (title || '').toLowerCase();
+    // A stretch / warm-up / yoga video is never a full body *workout*,
+    // even if its title says "full body stretch".
+    const stretchy = RULES.stretch.test(t);
     return parts.filter(p => {
+      if (p.key === 'fullbody' && stretchy) return false;
       if (RULES[p.key] && RULES[p.key].test(t)) return true;
       return [p.short, p.label].some(name => {
         const stem = (name || '').toLowerCase().replace(/[^a-z ]/g, '').trim().replace(/e?s$/, '');
