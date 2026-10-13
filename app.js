@@ -55,6 +55,10 @@ const other = () => (A.me === 'p1' ? 'p2' : 'p1');
 const nameOf = p => ((A.room && A.room.names) || {})[p] || (p === 'p1' ? 'Bella' : 'Izzy');
 const settings = () => (A.room && A.room.settings) || {};
 const queue = () => (A.live && A.live.queue) || [];
+// Once a workout is logged, its videos stay in live (for the "Logged!" screen)
+// but don't count as today's workout anymore: the next one starts fresh.
+const doneLogged = (s = A.live) => !!s && s.mode === 'finished' && !!s.logged;
+const upNext = () => (doneLogged() ? [] : queue());
 const isRunning = (s = A.live) => !!s && ['ready', 'playing', 'paused'].includes(s.mode);
 const allCats = () => (A.room && A.room.cats && A.room.cats.length ? A.room.cats : DEFAULT_CATS);
 const catOf = key => allCats().find(c => c.key === key);
@@ -295,7 +299,7 @@ const toItem = (v, slot, min = 0, max = 0) => ({
 // current video can change; otherwise this also resets it to "not started".
 function editQueue(fn) {
   return A.store.changeLive(c => {
-    const q = (c.queue || []).slice();
+    const q = doneLogged(c) ? [] : (c.queue || []).slice();
     const running = isRunning(c);
     if (fn(q, running ? c.index : -1) === false) return null;
     const patch = { queue: q };
@@ -346,7 +350,7 @@ function reroll(i) {
   });
 }
 function addToQueue(v) {
-  const wasEmpty = !queue().length;
+  const wasEmpty = !upNext().length;
   editQueue(q => { q.push(toItem(v)); });
   toast(wasEmpty ? 'Added to today’s workout' : 'Added');
 }
@@ -814,7 +818,7 @@ function renderLibrary() {
   list.sort(sorts[u.sort] || sorts.new);
   const chip = (key, label, n) => `<button class="chip ${u.cat === key ? 'on' : ''}" data-act="cat" data-c="${key}">${label}${n != null ? ` <span>${n}</span>` : ''}</button>`;
   const count = k => A.videos.filter(v => (v.cats || []).includes(k)).length;
-  const inQueue = new Set(queue().map(x => x.vid));
+  const inQueue = new Set(upNext().map(x => x.vid));
   return `
     <section class="lib-head">
       <div><h1>Library</h1><p class="muted">${A.videos.length} video${A.videos.length === 1 ? '' : 's'}</p></div>
@@ -936,7 +940,7 @@ function renderPlan() {
   const panels = {
     surprise: `<div class="surprise">
         <p class="muted">${esc(warm ? warm.label : 'A warm-up')} plus 2 random parts${buildCats().some(c => (c.worth || 1) >= 2) ? ` (or one ${esc(buildCats().filter(c => (c.worth || 1) >= 2).map(c => c.short.toLowerCase()).join(' or '))} video in place of both)` : ''}, favoring videos you haven’t done lately.</p>
-        <button class="btn primary big-btn" data-act="surprise">${icon('dice')} ${queue().length ? 'Surprise us again' : 'Surprise us'}</button>
+        <button class="btn primary big-btn" data-act="surprise">${icon('dice')} ${upNext().length ? 'Surprise us again' : 'Surprise us'}</button>
       </div>`,
     mix: `<p class="muted small">Pick the parts and how long each can be. One random video per part, in this order.</p>
         <div class="mix">${rows}</div>
@@ -951,7 +955,7 @@ function renderPlan() {
       ${queueCard()}
       <section class="card builder">
         <button type="button" class="card-toggle" data-act="build-toggle" aria-expanded="${builderOpen()}">
-          <h2>${queue().length ? 'Change today’s workout' : 'Build today’s workout'}</h2><i aria-hidden="true">${builderOpen() ? '▴' : '▾'}</i>
+          <h2>${upNext().length ? 'Change today’s workout' : 'Build today’s workout'}</h2><i aria-hidden="true">${builderOpen() ? '▴' : '▾'}</i>
         </button>
         ${builderOpen() ? `<div class="seg build-tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" aria-selected="${tab === k}" class="${tab === k ? 'on' : ''}" data-act="build-tab" data-k="${k}">${l}</button>`).join('')}</div>
         ${panels[tab] || panels.mix}` : ''}
@@ -964,7 +968,7 @@ function renderPlan() {
 function pickPanel() {
   const cat = A.ui.pickCat || 'all';
   const q = (A.ui.pickQ || '').toLowerCase();
-  const inQueue = new Set(queue().map(x => x.vid));
+  const inQueue = new Set(upNext().map(x => x.vid));
   const list = A.videos
     .filter(v => !v.noEmbed && buildable(v) && (cat === 'all' || (v.cats || []).includes(cat)) && (!q || matches(v, q)) && (!A.ui.pickFav || v.fav))
     .sort((a, b) => (a.title || '').localeCompare(b.title || ''));
