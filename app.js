@@ -1153,10 +1153,35 @@ let idleTimer;
 }, { passive: true }));
 document.addEventListener('fullscreenchange',() => { if (!document.fullscreenElement && A.ui.big) { A.ui.big = false; document.body.classList.remove('big'); render(true); } });
 
+// End workout's box: 'log', 'end', or null (the ✕ keeps the workout going).
+function askEnd() {
+  return new Promise(resolve => {
+    const wrap = document.createElement('div');
+    wrap.className = 'ask';
+    wrap.innerHTML = `<div class="ask-box" role="alertdialog" aria-modal="true">
+      <div class="row-between ask-head"><h3>End the workout?</h3><button class="icon-btn" data-ans="" aria-label="Keep going">${icon('x')}</button></div>
+      <div class="ask-btns"><button class="btn ghost" data-ans="end">End without logging</button><button class="btn primary" data-ans="log">We did it!</button></div>
+    </div>`;
+    const done = ans => { wrap.remove(); document.removeEventListener('keydown', onKey); resolve(ans || null); };
+    const onKey = e => { if (e.key === 'Escape') done(null); };
+    wrap.addEventListener('click', e => {
+      e.stopPropagation();
+      const b = e.target.closest('[data-ans]');
+      if (b) done(b.dataset.ans);
+      else if (e.target === wrap) done(null);
+    });
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(wrap);
+    wrap.querySelector('[data-ans="log"]').focus();
+  });
+}
+
+// Logs today's workout. Works at the end, or early from End workout (like
+// when you skip the credits): it stops the videos for both of you too.
 async function logWorkout() {
   const q = queue();
   A.ui.justLogged = true; // keep the "Logged!" screen up until you leave it
-  const ok = await A.store.changeLive(c => (c.mode === 'finished' && !c.logged ? { logged: true, by: A.me, action: 'log' } : null));
+  const ok = await A.store.changeLive(c => ((c.mode === 'finished' && !c.logged) || isRunning(c) ? { mode: 'finished', rest: false, logged: true, by: A.me, action: 'log' } : null));
   if (!ok) return;
   await A.store.addWorkout({
     day: Dates.today(),
@@ -1480,8 +1505,12 @@ async function onClick(e) {
       break;
     }
     case 'end':
-      if (await ask(s && s.mode === 'finished' ? 'Skip logging this workout?' : 'End the workout for both of you?', s && s.mode === 'finished' ? 'Don’t log' : 'End workout', true)) { Sync.cmd.end(); location.hash = '#/'; }
+    {
+      const ans = await askEnd();
+      if (ans === 'log') { await logWorkout(); render(true); }
+      if (ans === 'end') { Sync.cmd.end(); location.hash = '#/'; }
       break;
+    }
     case 'did-it': await logWorkout(); break;
     case 'big': setBig(!A.ui.big); render(true); break;
     case 'toggle-add': A.ui.adding = !A.ui.adding; A.ui.importMsg = ''; render(true); break;

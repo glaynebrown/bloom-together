@@ -193,6 +193,8 @@ input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: 1
 .ask-box { background: var(--surface); border-radius: 20px; padding: 20px; width: min(360px, 100%); box-shadow: 0 20px 50px rgba(0,0,0,.25); }
 .ask-box p { margin: 0 0 16px; font-size: 1.02rem; }
 .ask-btns { display: flex; justify-content: flex-end; gap: 8px; }
+.ask-head { margin: -6px -8px 14px 0; }
+.ask-head h3 { margin: 0; }
 .btn.primary.danger-btn { background: var(--accent-ink); }
 @keyframes fade { from { opacity: 0; } }
 
