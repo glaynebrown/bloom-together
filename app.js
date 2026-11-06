@@ -349,9 +349,18 @@ function reroll(i) {
     q[i] = toItem(v, it.slot, it.min, it.max);
   });
 }
+// Warm-up videos (the first workout part) go to the top, after any warm-ups
+// already there (or right after the current video mid-workout); the rest go last.
 function addToQueue(v) {
   const wasEmpty = !upNext().length;
-  editQueue(q => { q.push(toItem(v)); });
+  const warm = (buildCats()[0] || {}).key;
+  const isWarm = it => !!warm && (it.slot === warm || (it.cats || []).includes(warm));
+  editQueue((q, cur) => {
+    if (!isWarm(v)) { q.push(toItem(v)); return; }
+    let i = cur + 1;
+    while (i < q.length && isWarm(q[i])) i++;
+    q.splice(i, 0, toItem(v, warm));
+  });
   toast(wasEmpty ? 'Added to today’s workout' : 'Added');
 }
 
